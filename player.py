@@ -7,7 +7,7 @@ from constants import (
     PLAYER_SPEED,
     PLAYER_TURN_SPEED,
     PLAYER_SHOT_SPEED,
-    PLAYER_SHOOT_COOLDOWN_SECONDS
+    PLAYER_SHOOT_COOLDOWN_SECONDS,
 )
 
 
@@ -52,6 +52,7 @@ class Player(CircleShape):
             self.move(dt)
         if keys[pygame.K_SPACE]:
             self.shoot()
+        self.wrap_around_screen()
 
     def shoot(self):
         if self.cd > 0:
