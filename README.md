@@ -1,6 +1,6 @@
 # Asteroids
 
-The eternal classic implemented with pygame
+Asteroids (1979), rebuilt with irresponsible levels of modern engineering.
 
 ## Extension
 
