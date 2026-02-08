@@ -8,6 +8,10 @@ from game.config.constants import (
     MENU_BACKGROUND_OPACITY,
     GAME_OVER_BACKGROUND_IMAGE_PATH,
     GAME_OVER_BACKGROUND_OPACITY,
+    GAME_BORDER_IMAGE_PATH,
+    GAME_BORDER_OVERFLOW_PX,
+    GAME_VIEW_PADDING_X,
+    GAME_VIEW_PADDING_Y,
     PLAYER_MAX_HEALTH,
     PLAYER_INVULNERABLE_DURATION_SECONDS,
 )
@@ -23,6 +27,7 @@ STATE_MENU = "menu"
 STATE_PLAYING = "playing"
 STATE_GAME_OVER = "game_over"
 MENU_HOVER_SCALE = 1.06
+MENU_HINT_TEXT = "F11: Toggle Fullscreen"
 
 
 def _menu_option_key(option):
@@ -80,6 +85,52 @@ def load_menu_option_images(option_font):
     return images
 
 
+def load_game_border(image_path, overflow_px):
+    try:
+        border = pygame.image.load(image_path).convert_alpha()
+    except Exception as err:
+        print(f"Warning: failed to load game border image '{image_path}': {err}")
+        return None, 0
+
+    frame_width, frame_height = get_frame_size()
+    target_size = (
+        frame_width + (overflow_px * 2),
+        frame_height + (overflow_px * 2),
+    )
+    border = pygame.transform.scale(border, target_size)
+    return border, overflow_px
+
+
+def get_frame_size():
+    return (
+        SCREEN_WIDTH + (GAME_VIEW_PADDING_X * 2),
+        SCREEN_HEIGHT + (GAME_VIEW_PADDING_Y * 2),
+    )
+
+
+def create_display(fullscreen):
+    frame_width, frame_height = get_frame_size()
+    if fullscreen:
+        return pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+    return pygame.display.set_mode((frame_width, frame_height))
+
+
+def present_centered(display_surface, game_surface, game_border=None, game_border_overflow=0):
+    display_surface.fill("black")
+    display_width, display_height = display_surface.get_size()
+    frame_width, frame_height = get_frame_size()
+    frame_left = max(0, (display_width - frame_width) // 2)
+    frame_top = max(0, (display_height - frame_height) // 2)
+    if game_border is not None:
+        display_surface.blit(
+            game_border,
+            (frame_left - game_border_overflow, frame_top - game_border_overflow),
+        )
+    game_left = frame_left + GAME_VIEW_PADDING_X
+    game_top = frame_top + GAME_VIEW_PADDING_Y
+    display_surface.blit(game_surface, (game_left, game_top))
+
+
 def create_game_session():
     updatable = pygame.sprite.Group()
     drawable = pygame.sprite.Group()
@@ -109,7 +160,7 @@ def create_game_session():
     }
 
 
-def draw_menu(screen, background, option_font, selected_option, option_images):
+def draw_menu(screen, background, option_font, hint_font, selected_option, option_images):
     screen.fill("black")
     if background:
         screen.blit(background, (0, 0))
@@ -134,6 +185,10 @@ def draw_menu(screen, background, option_font, selected_option, option_images):
             label = option_font.render(f"{option}", True, color)
             label_rect = label.get_rect(center=(SCREEN_WIDTH / 2, base_y + idx * spacing))
             screen.blit(label, label_rect)
+
+    hint = hint_font.render(MENU_HINT_TEXT, True, (165, 165, 165))
+    hint_rect = hint.get_rect(midbottom=(SCREEN_WIDTH / 2, SCREEN_HEIGHT - 18))
+    screen.blit(hint, hint_rect)
 
 
 def draw_game(screen, background, drawable):
@@ -176,7 +231,9 @@ def main():
     pygame.init()
     clock = pygame.time.Clock()
 
-    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    fullscreen = False
+    screen = create_display(fullscreen)
+    game_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT)).convert()
     pygame.display.set_caption("Asteroids")
     background = load_background(BACKGROUND_IMAGE_PATH, BACKGROUND_OPACITY)
     menu_background = load_background(
@@ -187,9 +244,14 @@ def main():
         GAME_OVER_BACKGROUND_IMAGE_PATH,
         GAME_OVER_BACKGROUND_OPACITY,
     )
+    game_border, game_border_overflow = load_game_border(
+        GAME_BORDER_IMAGE_PATH,
+        GAME_BORDER_OVERFLOW_PX,
+    )
     title_font = pygame.font.SysFont(None, 96)
     option_font = pygame.font.SysFont(None, 50)
     hud_font = pygame.font.SysFont(None, 34)
+    hint_font = pygame.font.SysFont(None, 28)
     menu_option_images = load_menu_option_images(option_font)
 
     state = STATE_MENU
@@ -201,6 +263,10 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_F11:
+                fullscreen = not fullscreen
+                screen = create_display(fullscreen)
+                continue
 
             if state == STATE_MENU and event.type == pygame.KEYDOWN:
                 if event.key in (pygame.K_w, pygame.K_UP):
@@ -225,9 +291,10 @@ def main():
 
         if state == STATE_MENU:
             draw_menu(
-                screen,
+                game_surface,
                 menu_background,
                 option_font,
+                hint_font,
                 selected_option,
                 menu_option_images,
             )
@@ -268,24 +335,35 @@ def main():
             if player_dead:
                 state = STATE_GAME_OVER
                 draw_game_over(
-                    screen,
+                    game_surface,
                     game_over_background,
                     drawable,
                     title_font,
                     option_font,
                 )
             else:
-                draw_game(screen, background, drawable)
-                draw_health_ui(screen, session["health"], session["max_health"], hud_font)
+                draw_game(game_surface, background, drawable)
+                draw_health_ui(
+                    game_surface,
+                    session["health"],
+                    session["max_health"],
+                    hud_font,
+                )
         else:
             draw_game_over(
-                screen,
+                game_surface,
                 game_over_background,
                 session["drawable"],
                 title_font,
                 option_font,
             )
 
+        present_centered(
+            screen,
+            game_surface,
+            game_border=game_border,
+            game_border_overflow=game_border_overflow,
+        )
         pygame.display.flip()
         dt = clock.tick(60) / 1000  # ms
 
