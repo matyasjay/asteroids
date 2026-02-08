@@ -1,15 +1,22 @@
+import math
+import random
 import pygame
 from game.core.circleshape import CircleShape
 from game.entities.shot import Shot
 from game.config.constants import (
     PLAYER_RADIUS,
     LINE_WIDTH,
-    PLAYER_SPEED,
+    PLAYER_ACCELERATION,
+    PLAYER_MAX_SPEED,
     PLAYER_TURN_SPEED,
     PLAYER_SHOT_SPEED,
     PLAYER_SHOOT_COOLDOWN_SECONDS,
     PLAYER_SPRITE_PATH,
     PLAYER_SPRITE_SIZE_MULTIPLIER,
+    PLAYER_BUZZ_AMPLITUDE_PX,
+    PLAYER_BUZZ_FREQUENCY_HZ,
+    PLAYER_BUZZ_RAMP_UP,
+    PLAYER_BUZZ_RAMP_DOWN,
 )
 
 
@@ -20,6 +27,11 @@ class Player(CircleShape):
         self.cd = 0
         self.__sprite = self.__load_sprite()
         self.__sprite_cache = {}
+        self.__is_moving = False
+        self.__buzz_intensity = 0.0
+        self.__buzz_time = 0.0
+        self.__buzz_phase = random.uniform(0.0, math.pi * 2)
+        self.__buzz_phase_2 = random.uniform(0.0, math.pi * 2)
 
     def __load_sprite(self):
         target_size = max(1, int(self.radius * PLAYER_SPRITE_SIZE_MULTIPLIER))
@@ -61,12 +73,35 @@ class Player(CircleShape):
         return [a, b, c]
 
     def draw(self, screen):
+        draw_center = self.position + self.__get_buzz_offset()
         sprite = self.__get_rotated_sprite()
         if sprite:
-            rect = sprite.get_rect(center=(self.position.x, self.position.y))
+            rect = sprite.get_rect(center=(draw_center.x, draw_center.y))
             screen.blit(sprite, rect.topleft)
             return
-        pygame.draw.polygon(screen, "white", self.triangle(), LINE_WIDTH)
+        buzz_offset = draw_center - self.position
+        points = [point + buzz_offset for point in self.triangle()]
+        pygame.draw.polygon(screen, "white", points, LINE_WIDTH)
+
+    def __get_buzz_offset(self):
+        if self.__buzz_intensity <= 1e-3:
+            return pygame.Vector2(0, 0)
+
+        phase = (self.__buzz_time * PLAYER_BUZZ_FREQUENCY_HZ * 2 * math.pi) + self.__buzz_phase
+        phase_2 = (
+            self.__buzz_time * (PLAYER_BUZZ_FREQUENCY_HZ * 0.57) * 2 * math.pi
+        ) + self.__buzz_phase_2
+        forward = pygame.Vector2(0, 1).rotate(self.rotation)
+        right = pygame.Vector2(-forward.y, forward.x)
+
+        lateral_wave = (math.sin(phase) * 0.72) + (math.sin(phase_2) * 0.28)
+        longitudinal_wave = (math.sin(phase * 0.49 + phase_2 * 0.31) * 0.68) + (
+            math.sin(phase_2 * 0.37) * 0.32
+        )
+        amplitude = PLAYER_BUZZ_AMPLITUDE_PX * self.__buzz_intensity
+        lateral = lateral_wave * amplitude
+        longitudinal = longitudinal_wave * (amplitude * 0.32)
+        return (right * lateral) + (forward * longitudinal)
 
     def rotate(self, dt):
         self.rotation += PLAYER_TURN_SPEED * dt
@@ -74,12 +109,23 @@ class Player(CircleShape):
     def move(self, dt):
         unit_vector = pygame.Vector2(0, 1)
         rotated_vector = unit_vector.rotate(self.rotation)
-        rotated_with_speed_vector = rotated_vector * PLAYER_SPEED * dt
-        self.position += rotated_with_speed_vector
+        self.velocity += rotated_vector * PLAYER_ACCELERATION * dt
+
+    def __clamp_velocity(self):
+        max_speed_sq = PLAYER_MAX_SPEED * PLAYER_MAX_SPEED
+        if self.velocity.length_squared() > max_speed_sq:
+            self.velocity.scale_to_length(PLAYER_MAX_SPEED)
 
     def update(self, dt):
         self.cd -= dt
         keys = pygame.key.get_pressed()
+        self.__is_moving = keys[pygame.K_w] or keys[pygame.K_s]
+        self.__buzz_time += dt
+
+        target = 1.0 if self.__is_moving else 0.0
+        rate = PLAYER_BUZZ_RAMP_UP if target > self.__buzz_intensity else PLAYER_BUZZ_RAMP_DOWN
+        blend = min(1.0, dt * rate)
+        self.__buzz_intensity += (target - self.__buzz_intensity) * blend
 
         if keys[pygame.K_a]:
             self.rotate(dt * -1)
@@ -89,6 +135,8 @@ class Player(CircleShape):
             self.move(dt * -1)
         if keys[pygame.K_w]:
             self.move(dt)
+        self.__clamp_velocity()
+        self.position += self.velocity * dt
         if keys[pygame.K_SPACE]:
             self.shoot()
         self.wrap_around_screen()
