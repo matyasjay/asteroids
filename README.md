@@ -1,5 +1,7 @@
 # Asteroids
 
+![asteroids](./asteroids-bg.png)
+
 Asteroids (1979), rebuilt with irresponsible levels of modern engineering.
 
 ## Extension
