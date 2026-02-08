@@ -11,7 +11,7 @@ Asteroids (1979), rebuilt with irresponsible levels of modern engineering.
 - [ ] Add an explosion effect for the asteroids
 - [ ] Add acceleration to the player movement
 - [x] Make the objects wrap around the screen instead of disappearing
-- [ ] Add a background image
+- [x] Add a background image
 - [ ] Create different weapon types
 - [x] Make the asteroids lumpy instead of perfectly round
 - [ ] Make the ship have a triangular hit box instead of a circular one
