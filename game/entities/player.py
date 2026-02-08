@@ -12,6 +12,7 @@ from game.config.constants import (
     PLAYER_SHOT_SPEED,
     PLAYER_SHOOT_COOLDOWN_SECONDS,
     PLAYER_SPRITE_PATH,
+    PLAYER_INVULNERABLE_SPRITE_PATH,
     PLAYER_SPRITE_SIZE_MULTIPLIER,
     PLAYER_BUZZ_AMPLITUDE_PX,
     PLAYER_BUZZ_FREQUENCY_HZ,
@@ -25,20 +26,25 @@ class Player(CircleShape):
         super().__init__(x, y, PLAYER_RADIUS)
         self.rotation = 0
         self.cd = 0
-        self.__sprite = self.__load_sprite()
+        self.__sprite = self.__load_sprite(PLAYER_SPRITE_PATH)
+        self.__invulnerable_sprite = self.__load_sprite(PLAYER_INVULNERABLE_SPRITE_PATH)
         self.__sprite_cache = {}
         self.__is_moving = False
         self.__buzz_intensity = 0.0
         self.__buzz_time = 0.0
+        self.__invulnerable = False
+        self.__invulnerable_visual_time = 0.0
         self.__buzz_phase = random.uniform(0.0, math.pi * 2)
         self.__buzz_phase_2 = random.uniform(0.0, math.pi * 2)
 
-    def __load_sprite(self):
+    def __load_sprite(self, sprite_path):
+        if not sprite_path:
+            return None
         target_size = max(1, int(self.radius * PLAYER_SPRITE_SIZE_MULTIPLIER))
         try:
-            sprite = pygame.image.load(PLAYER_SPRITE_PATH).convert_alpha()
+            sprite = pygame.image.load(sprite_path).convert_alpha()
         except Exception as err:
-            print(f"Warning: failed to load player sprite '{PLAYER_SPRITE_PATH}': {err}")
+            print(f"Warning: failed to load player sprite '{sprite_path}': {err}")
             return None
 
         src_width, src_height = sprite.get_size()
@@ -50,18 +56,27 @@ class Player(CircleShape):
         return pygame.transform.smoothscale(sprite, scaled_size)
 
     def __get_rotated_sprite(self):
-        if self.__sprite is None:
+        use_alt_sprite = self.__invulnerable and self.__invulnerable_sprite is not None
+        base_sprite = self.__invulnerable_sprite if use_alt_sprite else self.__sprite
+        if base_sprite is None:
             return None
 
         # ship.png points north; player rotation=0 points south in current movement model.
         angle = int(round(180 - self.rotation)) % 360
-        if angle not in self.__sprite_cache:
-            self.__sprite_cache[angle] = pygame.transform.rotozoom(
-                self.__sprite,
+        mode = "invuln" if use_alt_sprite else "normal"
+        cache_key = (mode, angle)
+        if cache_key not in self.__sprite_cache:
+            self.__sprite_cache[cache_key] = pygame.transform.rotozoom(
+                base_sprite,
                 angle,
                 1.0,
             )
-        return self.__sprite_cache[angle]
+        return self.__sprite_cache[cache_key]
+
+    def set_invulnerable(self, active):
+        self.__invulnerable = active
+        if not active:
+            self.__invulnerable_visual_time = 0.0
 
     def triangle(self):
         forward = pygame.Vector2(0, 1).rotate(self.rotation)
@@ -77,11 +92,19 @@ class Player(CircleShape):
         sprite = self.__get_rotated_sprite()
         if sprite:
             rect = sprite.get_rect(center=(draw_center.x, draw_center.y))
-            screen.blit(sprite, rect.topleft)
+            if self.__invulnerable and self.__invulnerable_sprite is None:
+                pulse = (math.sin(self.__invulnerable_visual_time * 16.0) + 1.0) * 0.5
+                alpha = int(155 + pulse * 100)
+                temp = sprite.copy()
+                temp.set_alpha(alpha)
+                screen.blit(temp, rect.topleft)
+            else:
+                screen.blit(sprite, rect.topleft)
             return
         buzz_offset = draw_center - self.position
         points = [point + buzz_offset for point in self.triangle()]
-        pygame.draw.polygon(screen, "white", points, LINE_WIDTH)
+        color = (130, 220, 255) if self.__invulnerable else "white"
+        pygame.draw.polygon(screen, color, points, LINE_WIDTH)
 
     def __get_buzz_offset(self):
         if self.__buzz_intensity <= 1e-3:
@@ -121,6 +144,8 @@ class Player(CircleShape):
         keys = pygame.key.get_pressed()
         self.__is_moving = keys[pygame.K_w] or keys[pygame.K_s]
         self.__buzz_time += dt
+        if self.__invulnerable:
+            self.__invulnerable_visual_time += dt
 
         target = 1.0 if self.__is_moving else 0.0
         rate = PLAYER_BUZZ_RAMP_UP if target > self.__buzz_intensity else PLAYER_BUZZ_RAMP_DOWN

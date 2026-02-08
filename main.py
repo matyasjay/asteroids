@@ -8,12 +8,15 @@ from game.config.constants import (
     MENU_BACKGROUND_OPACITY,
     GAME_OVER_BACKGROUND_IMAGE_PATH,
     GAME_OVER_BACKGROUND_OPACITY,
+    PLAYER_MAX_HEALTH,
+    PLAYER_INVULNERABLE_DURATION_SECONDS,
 )
 from game.utils.logger import log_state, log_event
 from game.entities.player import Player
 from game.entities.asteroid import Asteroid
 from game.systems.asteroidfield import AsteroidField
 from game.entities.shot import Shot
+from game.entities.explosion import Explosion
 
 MENU_OPTIONS = ("New Game", "Quit")
 STATE_MENU = "menu"
@@ -82,11 +85,13 @@ def create_game_session():
     drawable = pygame.sprite.Group()
     asteroids = pygame.sprite.Group()
     shots = pygame.sprite.Group()
+    explosions = pygame.sprite.Group()
 
     Player.containers = (updatable, drawable)
     Asteroid.containers = (asteroids, updatable, drawable)
     AsteroidField.containers = (updatable)
     Shot.containers = (shots, drawable, updatable)
+    Explosion.containers = (explosions, drawable, updatable)
 
     player = Player(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
     AsteroidField()
@@ -96,7 +101,11 @@ def create_game_session():
         "drawable": drawable,
         "asteroids": asteroids,
         "shots": shots,
+        "explosions": explosions,
         "player": player,
+        "health": PLAYER_MAX_HEALTH,
+        "max_health": PLAYER_MAX_HEALTH,
+        "invuln_remaining": 0.0,
     }
 
 
@@ -135,6 +144,24 @@ def draw_game(screen, background, drawable):
         item.draw(screen)
 
 
+def draw_health_ui(screen, health, max_health, hud_font):
+    margin = 20
+    label = hud_font.render(f"Hull {health}/{max_health}", True, (235, 235, 235))
+    label_rect = label.get_rect(topright=(SCREEN_WIDTH - margin, margin))
+    screen.blit(label, label_rect)
+
+    pip_radius = 7
+    pip_spacing = 9
+    total_width = (pip_radius * 2 * max_health) + (pip_spacing * max(0, max_health - 1))
+    start_x = SCREEN_WIDTH - margin - total_width
+    y = label_rect.bottom + 8
+    for idx in range(max_health):
+        x = start_x + pip_radius + idx * ((pip_radius * 2) + pip_spacing)
+        color = (95, 220, 140) if idx < health else (70, 70, 70)
+        pygame.draw.circle(screen, color, (x, y + pip_radius), pip_radius)
+        pygame.draw.circle(screen, (225, 225, 225), (x, y + pip_radius), pip_radius, 1)
+
+
 def draw_game_over(screen, game_over_background, drawable, title_font, option_font):
     screen.fill("black")
     if game_over_background:
@@ -162,6 +189,7 @@ def main():
     )
     title_font = pygame.font.SysFont(None, 96)
     option_font = pygame.font.SysFont(None, 50)
+    hud_font = pygame.font.SysFont(None, 34)
     menu_option_images = load_menu_option_images(option_font)
 
     state = STATE_MENU
@@ -188,8 +216,8 @@ def main():
                         return
 
             if state == STATE_GAME_OVER and event.type == pygame.KEYDOWN:
-                if event.key in (pygame.K_RETURN,):
-                    for group_key in ("updatable", "drawable", "asteroids", "shots"):
+                if event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                    for group_key in ("updatable", "drawable", "asteroids", "shots", "explosions"):
                         session[group_key].empty()
                     session = None
                     selected_option = 0
@@ -209,24 +237,35 @@ def main():
             asteroids = session["asteroids"]
             shots = session["shots"]
             player = session["player"]
+            session["invuln_remaining"] = max(0.0, session["invuln_remaining"] - dt)
+            player.set_invulnerable(session["invuln_remaining"] > 0.0)
 
             log_state()
             updatable.update(dt)
 
-            player_hit = False
+            player_dead = False
+            if session["invuln_remaining"] <= 0.0:
+                for asteroid in asteroids:
+                    if asteroid.collides_with(player):
+                        session["health"] -= 1
+                        log_event("player_hit", remaining_health=session["health"])
+                        if session["health"] <= 0:
+                            player_dead = True
+                        else:
+                            session["invuln_remaining"] = PLAYER_INVULNERABLE_DURATION_SECONDS
+                            player.set_invulnerable(True)
+                        break
+
             for asteroid in asteroids:
-                if asteroid.collides_with(player):
-                    log_event("player_hit")
-                    player_hit = True
-                    break
                 for shot in shots:
                     if shot.collides_with(asteroid):
                         log_event("asteroid_shot")
+                        Explosion(asteroid.position.x, asteroid.position.y, asteroid.radius)
                         asteroid.split()
                         shot.kill()
                         break
 
-            if player_hit:
+            if player_dead:
                 state = STATE_GAME_OVER
                 draw_game_over(
                     screen,
@@ -237,6 +276,7 @@ def main():
                 )
             else:
                 draw_game(screen, background, drawable)
+                draw_health_ui(screen, session["health"], session["max_health"], hud_font)
         else:
             draw_game_over(
                 screen,

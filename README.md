@@ -20,8 +20,8 @@ sprites/      # Art assets
 
 - [ ] Add a scoring system
 - [ ] Implement multiple lives and respawning
-- [ ] Add an explosion effect for the asteroids
-- [ ] Add acceleration to the player movement
+- [x] Add an explosion effect for the asteroids
+- [x] Add acceleration to the player movement
 - [x] Make the objects wrap around the screen instead of disappearing
 - [x] Add a background image
 - [ ] Create different weapon types
