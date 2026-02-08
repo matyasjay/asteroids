@@ -1,8 +1,6 @@
-# Asteroids
-
 ![asteroids](./images/logo.png)
 
-Asteroids (1979), rebuilt with irresponsible levels of modern engineering.
+A pet project based on the incredible Asteroids (1979) retro space-game.
 
 ## Project Structure
 
