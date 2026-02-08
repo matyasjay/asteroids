@@ -1,16 +1,16 @@
 import sys
 import pygame
-from constants import (
+from game.config.constants import (
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
     BACKGROUND_IMAGE_PATH,
     BACKGROUND_OPACITY,
 )
-from logger import log_state, log_event
-from player import Player
-from asteroid import Asteroid
-from asteroidfield import AsteroidField
-from shot import Shot
+from game.utils.logger import log_state, log_event
+from game.entities.player import Player
+from game.entities.asteroid import Asteroid
+from game.systems.asteroidfield import AsteroidField
+from game.entities.shot import Shot
 
 
 def load_background():

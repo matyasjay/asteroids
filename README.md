@@ -1,8 +1,22 @@
 # Asteroids
 
-![asteroids](./asteroids-bg.png)
+![asteroids](./images/logo.png)
 
 Asteroids (1979), rebuilt with irresponsible levels of modern engineering.
+
+## Project Structure
+
+```text
+game/
+  config/     # Game constants and tuning knobs
+  core/       # Shared base types (e.g. CircleShape)
+  entities/   # Player, asteroids, shots
+  systems/    # Spawners and game systems
+  render/     # Texture/sprite helpers
+  utils/      # Logging and diagnostics
+main.py       # Entry point
+sprites/      # Art assets
+```
 
 ## Extension
 
