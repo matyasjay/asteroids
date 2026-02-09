@@ -2,16 +2,6 @@
 
 Remastered version of the incredible Asteroids (1979) retro space-game.
 
-## Development Bootstrap
-
-```bash
-# 1) Install dependencies
-uv sync
-
-# 2) Run the game
-uv run python main.py
-```
-
 ## Makefile Commands
 
 ```bash
@@ -21,6 +11,9 @@ make sync
 # Run from source
 make run
 
+# Run tests
+make test
+
 # Build macOS app bundle (ARM64 on Apple Silicon)
 make build
 
@@ -29,9 +22,16 @@ make open
 ```
 
 - `make build` generates a macOS `.icns` icon from `sprites/ship.png` (`build-icon`) and passes it to PyInstaller.
+- `make test` runs `pytest` in headless pygame mode.
 - Cleanup helpers:
   - `make clean` removes `build/`, `dist/`, and `asteroids.spec`
   - `make distclean` also removes all `__pycache__/` directories
+
+## Testing
+
+- Test runner: `pytest` (headless pygame setup via `tests/conftest.py`).
+- Local run: `make test` (or `uv run --group dev pytest`).
+- CI: `.github/workflows/tests.yml` runs tests on pushes to `main` and on pull requests.
 
 ## Release Process
 
@@ -56,6 +56,7 @@ game/
   render/     # Texture/sprite helpers
   utils/      # Logging and diagnostics
 main.py       # Entry point
+images/       # UI/background/loading art
 sprites/      # Art assets
 ```
 
@@ -65,6 +66,7 @@ This codebase is organized around a small game loop plus modular gameplay/render
 
 - `main.py`:
   - Owns the top-level state machine (`menu`, `playing`, `game_over`).
+  - Runs startup bootstrapping (`StartupScreen`) and prewarms heavy render assets.
   - Processes input events and core gameplay rules (damage, collisions, transitions).
   - Creates and resets game sessions (sprite groups + runtime state like health).
 - `game/config/constants.py`:
@@ -91,6 +93,10 @@ This codebase is organized around a small game loop plus modular gameplay/render
   - Centralized rendering and presentation layer.
   - Loads/caches backgrounds, menu option images, border frame, fonts.
   - Draws each scene and presents the fixed-size game surface centered inside the display.
+- `game/render/startup.py` (`StartupScreen`):
+  - Handles launch-time loading screen rendering.
+  - Displays `images/loading.png` inside the same centered viewport composition used by gameplay.
+  - Enforces minimum loading-screen duration and keeps the window responsive while assets warm up.
 - `game/render/asteroid_texture.py`:
   - Loads asteroid sprite variants, selects by size class, scales/caches textures.
 - `game/utils/logger.py`:
@@ -101,39 +107,41 @@ This codebase is organized around a small game loop plus modular gameplay/render
 ```text
                         +----------------------+
                         |       main.py        |
-                        |  game loop + states  |
+                        | boot + loop + states |
                         +----------+-----------+
                                    |
-                +------------------+------------------+
-                |                                     |
-      +---------v---------+                 +---------v---------+
-      |   Game Session    |                 |   GameRenderer    |
-      | pygame groups +   |                 | draw scenes +     |
-      | runtime state     |                 | present display   |
-      +---------+---------+                 +---------+---------+
-                |                                     |
-      +---------+---------+                   +-------+------------------+
-      |                   |                   |                          |
-+-----v------+    +------v-------+    +------v--------+         +-------v--------+
-| updatable  |    |   drawable   |    |  backgrounds  |         |  border/frame  |
-| sprites    |    |   sprites    |    |  menu/game/   |         |  + viewport    |
-+-----+------+    +------+-------+    |  game-over    |         |  composition   |
-      |                  |            +---------------+         +----------------+
-      |                  |
-  +---v--------------------------------------------------+
-  | entities: Player, Asteroid, Shot, Explosion          |
-  | base behavior from CircleShape (position/velocity/   |
-  | radius, collision checks, wrap-around)               |
-  +---+--------------------------------------------------+
-      |
-  +---v------------------------+
-  | systems: AsteroidField     |
-  | (spawning/timing)          |
-  +----------------------------+
+                +-------------------+---------------------------+
+                |                   |                           |
+      +---------v---------+ +-------v--------+         +--------v--------+
+      |    StartupScreen  | |   Game Session |         |   GameRenderer  |
+      | loading image +   | | pygame groups +|         | draw scenes +   |
+      | min startup time  | | runtime state  |         | present display |
+      +-------------------+ +-------+--------+         +--------+--------+
+                                    |                           |
+                            +-------+--------+          +-------+------------------+
+                            |                |          |                          |
+                       +----v-----+   +------v-------+  |  backgrounds/border/     |
+                       | updatable|   |   drawable   |  |  menu assets + viewport  |
+                       | sprites  |   |   sprites    |  |  composition              |
+                       +----+-----+   +------+-------+  +---------------------------+
+                            |                |
+  +-------------------------v----------------v-------------------------+
+  | entities: Player, Asteroid, Shot, Explosion                       |
+  | base behavior from CircleShape (position/velocity/radius,         |
+  | collision checks, wrap-around)                                    |
+  +-------------------------+------------------------------------------+
+                            |
+                       +----v-------------------+
+                       | systems: AsteroidField |
+                       | (spawning/timing)      |
+                       +------------------------+
 ```
 
 ### Runtime Model
 
+- Startup phase:
+  - `StartupScreen` draws the loading image and frame while renderer/texture resources are initialized.
+  - A minimum startup duration prevents quick-load flicker on fast machines.
 - Simulation updates on a fixed loop cadence (`clock.tick(60)` target).
 - Entities are grouped by `pygame.sprite.Group` roles:
   - `updatable`: receives `update(dt)`.
@@ -162,4 +170,4 @@ This codebase is organized around a small game loop plus modular gameplay/render
 - [ ] Replace the session dictionary with a typed dataclass (`GameSession`) for safer state access and easier refactors.
 - [ ] Add an `AssetManager` for centralized loading/pre-scaling and consistent asset error handling.
 - [ ] Split the loop into fixed-timestep update and variable render for stable gameplay under frame drops.
-- [ ] Add tests for critical behavior: state transitions, health/invulnerability flow, and wraparound.
+- [x ] Add tests for critical behavior: state transitions, health/invulnerability flow, and wraparound.

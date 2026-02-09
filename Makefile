@@ -7,12 +7,13 @@ ICON_PNG := build/app-icon.png
 ICON_ICNS := build/app-icon.icns
 ICONSET_DIR := build/app.iconset
 
-.PHONY: help sync run build build-icon open clean distclean
+.PHONY: help sync run test build build-icon open clean distclean
 
 help:
 	@echo "Targets:"
 	@echo "  make sync      Install/update dependencies via uv"
 	@echo "  make run       Run the game from source"
+	@echo "  make test      Run test suite (pytest)"
 	@echo "  make build-icon Generate macOS app icon (.icns) from sprites/ship.png"
 	@echo "  make build     Build macOS app bundle with PyInstaller"
 	@echo "  make open      Open built app bundle"
@@ -24,6 +25,9 @@ sync:
 
 run:
 	$(PY) main.py
+
+test:
+	uv run --group dev pytest
 
 build-icon:
 	@mkdir -p build $(ICONSET_DIR)
