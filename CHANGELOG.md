@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.2] - 2026-02-09
+
+### Fixed
+- add assset resolver to binary (`577b5a3`)
+
+### Chore
+- add app icon (`da769e5`)
+
 ## [1.1.1] - 2026-02-09
 
 ### Chore
