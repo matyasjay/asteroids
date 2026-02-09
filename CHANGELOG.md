@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0] - 2026-02-09
+
+### Added
+- add loading screen functionality (`1b0711d`)
+
+### Documentation
+- update badges (`6b3107c`)
+- add badges (`77af684`)
+
+### Chore
+- add baseline tests, AGENTS file and CI test run (`afc7ada`)
+
 ## [1.1.4] - 2026-02-09
 
 ### Fixed
