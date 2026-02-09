@@ -65,6 +65,42 @@ This codebase is organized around a small game loop plus modular gameplay/render
 - `game/utils/logger.py`:
   - Lightweight structured logging for game state and gameplay events.
 
+### Architecture Diagram
+
+```text
+                        +----------------------+
+                        |       main.py        |
+                        |  game loop + states  |
+                        +----------+-----------+
+                                   |
+                +------------------+------------------+
+                |                                     |
+      +---------v---------+                 +---------v---------+
+      |   Game Session    |                 |   GameRenderer    |
+      | pygame groups +   |                 | draw scenes +     |
+      | runtime state     |                 | present display   |
+      +---------+---------+                 +---------+---------+
+                |                                     |
+      +---------+---------+                   +-------+------------------+
+      |                   |                   |                          |
++-----v------+    +------v-------+    +------v--------+         +-------v--------+
+| updatable  |    |   drawable   |    |  backgrounds  |         |  border/frame  |
+| sprites    |    |   sprites    |    |  menu/game/   |         |  + viewport    |
++-----+------+    +------+-------+    |  game-over    |         |  composition   |
+      |                  |            +---------------+         +----------------+
+      |                  |
+  +---v--------------------------------------------------+
+  | entities: Player, Asteroid, Shot, Explosion          |
+  | base behavior from CircleShape (position/velocity/   |
+  | radius, collision checks, wrap-around)               |
+  +---+--------------------------------------------------+
+      |
+  +---v------------------------+
+  | systems: AsteroidField     |
+  | (spawning/timing)          |
+  +----------------------------+
+```
+
 ### Runtime Model
 
 - Simulation updates on a fixed loop cadence (`clock.tick(60)` target).
