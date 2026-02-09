@@ -107,18 +107,23 @@ jobs:
   build_binaries:
     needs: release
     if: ${{ needs.release.outputs.dry_run != 'true' }}
+    continue-on-error: ${{ matrix.allow_failure }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: macos-14
             target: macos-arm64
-          - os: macos-13
+            allow_failure: false
+          - os: macos-15-intel
             target: macos-x64
+            allow_failure: true
           - os: windows-latest
             target: windows-x64
+            allow_failure: false
           - os: ubuntu-latest
             target: linux-x64
+            allow_failure: false
     runs-on: ${{ matrix.os }}
 
     steps:
