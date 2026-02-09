@@ -12,6 +12,7 @@ from game.config.constants import (
     GAME_BORDER_OVERFLOW_PX,
     GAME_VIEW_PADDING_X,
     GAME_VIEW_PADDING_Y,
+    WINDOW_ICON_PATH,
 )
 from game.utils.resources import asset_path
 
@@ -23,6 +24,7 @@ class GameRenderer:
     def __init__(self, menu_options):
         self.menu_options = tuple(menu_options)
         self.fullscreen = True
+        self._set_window_icon(WINDOW_ICON_PATH)
         self.display_surface = self._create_display(self.fullscreen)
         self.game_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT)).convert()
         pygame.display.set_caption("Asteroids")
@@ -227,3 +229,11 @@ class GameRenderer:
             color = (95, 220, 140) if idx < health else (70, 70, 70)
             pygame.draw.circle(self.game_surface, color, (x, y + pip_radius), pip_radius)
             pygame.draw.circle(self.game_surface, (225, 225, 225), (x, y + pip_radius), pip_radius, 1)
+
+    @staticmethod
+    def _set_window_icon(image_path):
+        try:
+            icon = pygame.image.load(image_path).convert_alpha()
+            pygame.display.set_icon(icon)
+        except Exception as err:
+            print(f"Warning: failed to load window icon '{image_path}': {err}")

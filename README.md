@@ -21,6 +21,7 @@ Releases are manual via GitHub Actions (`workflow_dispatch`) using `.github/work
 - SemVer for `auto`: `major` on breaking changes, `minor` on `feat:`, `patch` on `fix:`, `perf:`, or `refactor:`.
 - Real release runs update `pyproject.toml` and `CHANGELOG.md`, then create/push the release tag.
 - Real release runs also build and upload PyInstaller archives for `macos-arm64`, `macos-x64`, `windows-x64`, and `linux-x64`.
+- Build pipeline derives app icons from `sprites/ship.png` (titlebar icon in windowed mode and packaged binary icon).
 - macOS artifacts are unsigned and may require manual “Open Anyway” in system settings.
 
 ## Project Structure

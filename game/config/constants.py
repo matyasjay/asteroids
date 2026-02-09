@@ -14,6 +14,7 @@ GAME_BORDER_IMAGE_PATH = asset_path("images", "game-border.png")
 GAME_BORDER_OVERFLOW_PX = 28
 GAME_VIEW_PADDING_X = 56
 GAME_VIEW_PADDING_Y = 36
+WINDOW_ICON_PATH = asset_path("sprites", "ship.png")
 
 LINE_WIDTH = 2
 SHOT_RADIUS = 5

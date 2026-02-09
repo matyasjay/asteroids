@@ -139,12 +139,44 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install pyinstaller "pygame==2.6.1" "Pillow>=10.0.0"
 
+      - name: Prepare app icon
+        id: icon
+        shell: bash
+        run: |
+          mkdir -p build
+          python - <<'PY'
+          from PIL import Image
+
+          src = Image.open("sprites/ship.png").convert("RGBA")
+          size = max(src.width, src.height)
+          canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+          offset = ((size - src.width) // 2, (size - src.height) // 2)
+          canvas.paste(src, offset)
+          canvas = canvas.resize((1024, 1024), Image.Resampling.LANCZOS)
+          canvas.save("build/app-icon.png")
+          canvas.save(
+              "build/app-icon.ico",
+              sizes=[(256, 256), (128, 128), (64, 64), (48, 48), (32, 32), (16, 16)],
+          )
+          PY
+
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            echo "icon_path=build/app-icon.ico" >> "$GITHUB_OUTPUT"
+          elif [ "${{ runner.os }}" = "macOS" ]; then
+            sips -s format icns build/app-icon.png --out build/app-icon.icns >/dev/null
+            echo "icon_path=build/app-icon.icns" >> "$GITHUB_OUTPUT"
+          else
+            echo "icon_path=build/app-icon.png" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build PyInstaller bundle
         shell: bash
         env:
           DATA_SEP: ${{ runner.os == 'Windows' && ';' || ':' }}
         run: |
-          pyinstaller --noconfirm --clean --windowed --name asteroids main.py \
+          pyinstaller --noconfirm --clean --windowed --name asteroids \
+            --icon "${{ steps.icon.outputs.icon_path }}" \
+            main.py \
             --add-data "images${DATA_SEP}images" \
             --add-data "sprites${DATA_SEP}sprites"
 
