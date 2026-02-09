@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.4] - 2026-02-09
+
+### Fixed
+- prewarm sprites to prevent init lag on hit (`184c2a2`)
+
+### Chore
+- add bypass to macos-13 build (`1a6b2b6`)
+
 ## [1.1.3] - 2026-02-09
 
 ### Fixed
