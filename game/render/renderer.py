@@ -21,7 +21,7 @@ MENU_HINT_TEXT = "F11: Toggle Fullscreen"
 class GameRenderer:
     def __init__(self, menu_options):
         self.menu_options = tuple(menu_options)
-        self.fullscreen = False
+        self.fullscreen = True
         self.display_surface = self._create_display(self.fullscreen)
         self.game_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT)).convert()
         pygame.display.set_caption("Asteroids")
@@ -77,8 +77,8 @@ class GameRenderer:
                 label_rect = label.get_rect(center=(SCREEN_WIDTH / 2, base_y + idx * spacing))
                 screen.blit(label, label_rect)
 
-        hint = self.hint_font.render(MENU_HINT_TEXT, True, (165, 165, 165))
-        hint_rect = hint.get_rect(midbottom=(SCREEN_WIDTH / 2, SCREEN_HEIGHT - 18))
+        hint = self.hint_font.render(MENU_HINT_TEXT, True, (140, 140, 140))
+        hint_rect = hint.get_rect(midbottom=(SCREEN_WIDTH / 2, SCREEN_HEIGHT - 70))
         screen.blit(hint, hint_rect)
 
     def render_game(self, drawable, health, max_health):
