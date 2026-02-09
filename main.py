@@ -82,7 +82,7 @@ def main():
                         return
 
             if state == STATE_GAME_OVER and event.type == pygame.KEYDOWN:
-                if event.key in (pygame.K_RETURN):
+                if event.key in (pygame.K_RETURN,):
                     for group_key in (
                         "updatable",
                         "drawable",

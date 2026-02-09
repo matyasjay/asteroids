@@ -13,6 +13,7 @@ from game.config.constants import (
     GAME_VIEW_PADDING_X,
     GAME_VIEW_PADDING_Y,
 )
+from game.utils.resources import asset_path
 
 MENU_HOVER_SCALE = 1.06
 MENU_HINT_TEXT = "F11: Toggle Fullscreen"
@@ -167,7 +168,10 @@ class GameRenderer:
 
             option_images = {}
             for state in ("default", "hover"):
-                image_path = f"images/{self._menu_option_key(option)}-{state}.png"
+                image_path = asset_path(
+                    "images",
+                    f"{self._menu_option_key(option)}-{state}.png",
+                )
                 try:
                     image = pygame.image.load(image_path).convert_alpha()
                 except Exception as err:
