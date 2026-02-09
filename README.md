@@ -1,11 +1,25 @@
 ![asteroids](./images/logo.png)
 
-Remastered version of the incredible Asteroids (1979) retro space-game. 
+Remastered version of the incredible Asteroids (1979) retro space-game.
 
 ![GitHub Release](https://img.shields.io/github/v/release/matyasjay/asteroids?display_name=tag&style=for-the-badge)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/matyasjay/asteroids/tests.yml?style=for-the-badge)
 
 ### You can [download](https://github.com/matyasjay/asteroids/releases/latest) the latest version for your `x64/ARM` (Windows, macOS, Linux) system!
+
+<table>
+    <tr>
+        <td>
+            <img src=".github/static/src1.png" width="30%" height="auto" />
+        </td>
+        <td>
+            <img src=".github/static/src2.png" width="30%" height="auto" />
+        </td>
+        <td>
+            <img src=".github/static/src3.png" width="30%" height="auto" />
+        </td>
+    </tr>
+</table>
 
 ---
 
