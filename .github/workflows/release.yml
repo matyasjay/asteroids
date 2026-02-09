@@ -145,6 +145,7 @@ jobs:
         run: |
           mkdir -p build
           python - <<'PY'
+          import pathlib
           from PIL import Image
 
           src = Image.open("sprites/ship.png").convert("RGBA")
@@ -158,12 +159,23 @@ jobs:
               "build/app-icon.ico",
               sizes=[(256, 256), (128, 128), (64, 64), (48, 48), (32, 32), (16, 16)],
           )
+
+          iconset = pathlib.Path("build/app.iconset")
+          iconset.mkdir(parents=True, exist_ok=True)
+          for base in (16, 32, 128, 256, 512):
+              canvas.resize((base, base), Image.Resampling.LANCZOS).save(
+                  iconset / f"icon_{base}x{base}.png"
+              )
+              retina = base * 2
+              canvas.resize((retina, retina), Image.Resampling.LANCZOS).save(
+                  iconset / f"icon_{base}x{base}@2x.png"
+              )
           PY
 
           if [ "${{ runner.os }}" = "Windows" ]; then
             echo "icon_path=build/app-icon.ico" >> "$GITHUB_OUTPUT"
           elif [ "${{ runner.os }}" = "macOS" ]; then
-            sips -s format icns build/app-icon.png --out build/app-icon.icns >/dev/null
+            iconutil -c icns build/app.iconset -o build/app-icon.icns
             echo "icon_path=build/app-icon.icns" >> "$GITHUB_OUTPUT"
           else
             echo "icon_path=build/app-icon.png" >> "$GITHUB_OUTPUT"
