@@ -2,6 +2,10 @@
 
 Remastered version of the incredible Asteroids (1979) retro space-game.
 
+![GitHub Release](https://img.shields.io/github/v/release/matyasjay/asteroids?display_name=tag&style=flat-square)
+
+[![Tests](https://github.com/matyasjay/asteroids/actions/workflows/tests.yml/badge.svg)](https://github.com/matyasjay/asteroids/actions/workflows/tests.yml)
+
 ## Makefile Commands
 
 ```bash
