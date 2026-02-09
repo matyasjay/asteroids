@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.1] - 2026-02-09
+
+### Chore
+- update pip build instruction (`e813a9c`)
+
 ## [1.1.0] - 2026-02-09
 
 ### Added
