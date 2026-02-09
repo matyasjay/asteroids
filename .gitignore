@@ -12,3 +12,6 @@ wheels/
 # Logging
 game_state.jsonl
 game_events.jsonl
+
+# Release artifacts
+.release/

@@ -1,0 +1,192 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_strategy:
+        description: "SemVer bump strategy"
+        required: true
+        default: auto
+        type: choice
+        options:
+          - auto
+          - major
+          - minor
+          - patch
+      prerelease:
+        description: "Mark GitHub Release as prerelease"
+        required: true
+        default: false
+        type: boolean
+      dry_run:
+        description: "Compute version/changelog without committing, tagging, or releasing"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.prep.outputs.version }}
+      tag: ${{ steps.prep.outputs.tag }}
+      dry_run: ${{ steps.prep.outputs.dry_run }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.CI_TOKEN }}
+
+      - name: Ensure main branch
+        run: |
+          if [ "${GITHUB_REF_NAME}" != "main" ]; then
+            echo "Releases can only run from main. Current branch: ${GITHUB_REF_NAME}" >&2
+            exit 1
+          fi
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Compute version and notes
+        id: prep
+        run: |
+          args=(
+            --strategy "${{ inputs.release_strategy }}"
+            --notes-file .release/release-notes.md
+          )
+          if [ "${{ inputs.prerelease }}" = "true" ]; then
+            args+=(--prerelease)
+          fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            args+=(--dry-run)
+          fi
+          python scripts/release.py "${args[@]}"
+
+      - name: Show computed release data
+        run: |
+          echo "Current version: ${{ steps.prep.outputs.current_version }}"
+          echo "Last tag: ${{ steps.prep.outputs.last_tag }}"
+          echo "Bump: ${{ steps.prep.outputs.bump }}"
+          echo "Next version: ${{ steps.prep.outputs.version }}"
+          echo "Tag: ${{ steps.prep.outputs.tag }}"
+          echo "--- Release Notes ---"
+          cat "${{ steps.prep.outputs.notes_file }}"
+
+      - name: Commit release files
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml CHANGELOG.md
+          git commit -m "chore(release): ${{ steps.prep.outputs.tag }}"
+
+      - name: Push commit and tag
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git tag "${{ steps.prep.outputs.tag }}"
+          git push origin HEAD:main
+          git push origin "${{ steps.prep.outputs.tag }}"
+
+      - name: Create GitHub Release (draft)
+        if: ${{ !inputs.dry_run }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.prep.outputs.tag }}
+          name: ${{ steps.prep.outputs.tag }}
+          body_path: ${{ steps.prep.outputs.notes_file }}
+          draft: true
+          prerelease: ${{ inputs.prerelease }}
+
+  build_binaries:
+    needs: release
+    if: ${{ needs.release.outputs.dry_run != 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: macos-arm64
+          - os: macos-13
+            target: macos-x64
+          - os: windows-latest
+            target: windows-x64
+          - os: ubuntu-latest
+            target: linux-x64
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.tag }}
+          token: ${{ secrets.CI_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install build dependencies
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install . pyinstaller
+
+      - name: Build PyInstaller bundle
+        shell: bash
+        env:
+          DATA_SEP: ${{ runner.os == 'Windows' && ';' || ':' }}
+        run: |
+          pyinstaller --noconfirm --clean --windowed --name asteroids main.py \
+            --add-data "images${DATA_SEP}images" \
+            --add-data "sprites${DATA_SEP}sprites"
+
+      - name: Package archive
+        id: package
+        shell: bash
+        env:
+          TAG: ${{ needs.release.outputs.tag }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          python - <<'PY'
+          import os
+          import pathlib
+          import shutil
+
+          tag = os.environ["TAG"]
+          target = os.environ["TARGET"]
+          app_dir = pathlib.Path("dist") / "asteroids"
+          output_base = pathlib.Path("dist") / f"asteroids-{tag}-{target}"
+          archive = shutil.make_archive(
+              str(output_base),
+              "zip",
+              root_dir=str(app_dir.parent),
+              base_dir=app_dir.name,
+          )
+          print(f"Created archive: {archive}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write(f"archive={archive}\n")
+          PY
+
+      - name: Upload build artifact (workflow)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: ${{ steps.package.outputs.archive }}
+
+      - name: Upload archive to GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload \
+            "${{ needs.release.outputs.tag }}" \
+            "${{ steps.package.outputs.archive }}" \
+            --clobber
