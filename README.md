@@ -12,6 +12,27 @@ uv sync
 uv run python main.py
 ```
 
+## Makefile Commands
+
+```bash
+# Install/update dependencies
+make sync
+
+# Run from source
+make run
+
+# Build macOS app bundle (ARM64 on Apple Silicon)
+make build
+
+# Open built app
+make open
+```
+
+- `make build` generates a macOS `.icns` icon from `sprites/ship.png` (`build-icon`) and passes it to PyInstaller.
+- Cleanup helpers:
+  - `make clean` removes `build/`, `dist/`, and `asteroids.spec`
+  - `make distclean` also removes all `__pycache__/` directories
+
 ## Release Process
 
 Releases are manual via GitHub Actions (`workflow_dispatch`) using `.github/workflows/release.yml`.
