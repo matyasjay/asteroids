@@ -10,13 +10,13 @@ Remastered version of the incredible Asteroids (1979) retro space-game.
 <table>
     <tr>
         <td>
-            <img src=".github/static/src1.png" width="30%" height="auto" />
+            <img src=".github/static/src1.jpg" width="30%" height="auto" />
         </td>
         <td>
-            <img src=".github/static/src2.png" width="30%" height="auto" />
+            <img src=".github/static/src2.jpg" width="30%" height="auto" />
         </td>
         <td>
-            <img src=".github/static/src3.png" width="30%" height="auto" />
+            <img src=".github/static/src3.jpg" width="30%" height="auto" />
         </td>
     </tr>
 </table>
