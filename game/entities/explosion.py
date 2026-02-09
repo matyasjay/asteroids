@@ -1,4 +1,5 @@
 import math
+import os
 import random
 import pygame
 from game.config.constants import (
@@ -40,6 +41,8 @@ class Explosion(pygame.sprite.Sprite):
 
         cls._gif_load_attempted = True
         cls._base_gif_frames = []
+        if not os.path.exists(EXPLOSION_GIF_PATH):
+            return cls._base_gif_frames
         try:
             from PIL import Image, ImageSequence
 
@@ -58,6 +61,17 @@ class Explosion(pygame.sprite.Sprite):
             cls._base_gif_frames = []
 
         return cls._base_gif_frames
+
+    @classmethod
+    def prewarm(cls, radii=None):
+        """Preload expensive explosion resources before gameplay starts."""
+        if radii is None:
+            radii = []
+
+        cls._load_gif_frames()
+        if cls._base_gif_frames:
+            for radius in radii:
+                cls._get_scaled_gif_frames(radius)
 
     @classmethod
     def _get_scaled_gif_frames(cls, radius):

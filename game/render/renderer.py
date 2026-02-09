@@ -24,8 +24,8 @@ class GameRenderer:
     def __init__(self, menu_options):
         self.menu_options = tuple(menu_options)
         self.fullscreen = True
-        self._set_window_icon(WINDOW_ICON_PATH)
         self.display_surface = self._create_display(self.fullscreen)
+        self._set_window_icon(WINDOW_ICON_PATH)
         self.game_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT)).convert()
         pygame.display.set_caption("Asteroids")
 
@@ -233,7 +233,7 @@ class GameRenderer:
     @staticmethod
     def _set_window_icon(image_path):
         try:
-            icon = pygame.image.load(image_path).convert_alpha()
+            icon = pygame.image.load(image_path)
             pygame.display.set_icon(icon)
         except Exception as err:
             print(f"Warning: failed to load window icon '{image_path}': {err}")

@@ -2,6 +2,8 @@ import pygame
 from game.config.constants import (
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
+    ASTEROID_MIN_RADIUS,
+    ASTEROID_KINDS,
     PLAYER_MAX_HEALTH,
     PLAYER_INVULNERABLE_DURATION_SECONDS,
 )
@@ -11,7 +13,7 @@ from game.entities.asteroid import Asteroid
 from game.systems.asteroidfield import AsteroidField
 from game.entities.shot import Shot
 from game.entities.explosion import Explosion
-from game.render import GameRenderer
+from game.render import GameRenderer, prewarm_asteroid_textures
 
 MENU_OPTIONS = ("New Game", "Quit")
 STATE_MENU = "menu"
@@ -54,6 +56,13 @@ def main():
     pygame.init()
     clock = pygame.time.Clock()
     renderer = GameRenderer(menu_options=MENU_OPTIONS)
+    prewarm_asteroid_textures()
+    Explosion.prewarm(
+        [
+            ASTEROID_MIN_RADIUS * kind
+            for kind in range(1, ASTEROID_KINDS + 1)
+        ]
+    )
 
     state = STATE_MENU
     selected_option = 0

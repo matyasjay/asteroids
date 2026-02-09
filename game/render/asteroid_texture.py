@@ -5,6 +5,7 @@ import re
 import pygame
 from game.config.constants import (
     ASTEROID_MIN_RADIUS,
+    ASTEROID_KINDS,
     ASTEROID_SPRITE_GLOB,
     ASTEROID_SPRITE_SCALE_TO_RADIUS,
 )
@@ -63,12 +64,20 @@ def _ensure_sprites_loaded():
         visible_rect = surface.get_bounding_rect(min_alpha=1)
         if visible_rect.width == 0 or visible_rect.height == 0:
             continue
+        source_mask = pygame.mask.from_surface(surface)
+        source_centroid = source_mask.centroid() if source_mask.count() else None
+        if source_centroid is None:
+            source_center = (surface.get_width() / 2, surface.get_height() / 2)
+        else:
+            source_center = source_centroid
 
         _SPRITES_BY_SIZE[size_key].append(
             {
                 "name": name,
                 "surface": surface,
+                "source_size": surface.get_size(),
                 "visible_longest": max(visible_rect.width, visible_rect.height),
+                "source_center": source_center,
             }
         )
 
@@ -97,18 +106,34 @@ def _get_scaled_variant(variant, target_longest):
         max(1, int(round(source.get_height() * scale))),
     )
     scaled = pygame.transform.smoothscale(source, scaled_size)
-
-    mask = pygame.mask.from_surface(scaled)
-    centroid = mask.centroid() if mask.count() else None
-    if centroid is None:
-        center_x = scaled.get_width() / 2
-        center_y = scaled.get_height() / 2
-    else:
-        center_x, center_y = centroid
+    source_width, source_height = variant["source_size"]
+    source_center_x, source_center_y = variant["source_center"]
+    scale_x = scaled_size[0] / max(1, source_width)
+    scale_y = scaled_size[1] / max(1, source_height)
+    center_x = source_center_x * scale_x
+    center_y = source_center_y * scale_y
 
     offset = pygame.Vector2(-center_x, -center_y)
     _SCALED_CACHE[cache_key] = (scaled, offset)
     return _SCALED_CACHE[cache_key]
+
+
+def prewarm_asteroid_textures():
+    """Warm common asteroid texture sizes to avoid first-hit stutter."""
+    _ensure_sprites_loaded()
+    size_to_radius = {
+        "sm": ASTEROID_MIN_RADIUS,
+        "md": ASTEROID_MIN_RADIUS * 2,
+        "lg": ASTEROID_MIN_RADIUS * max(3, ASTEROID_KINDS),
+    }
+
+    for size_key, variants in _SPRITES_BY_SIZE.items():
+        if not variants:
+            continue
+        radius = size_to_radius.get(size_key, ASTEROID_MIN_RADIUS)
+        target_longest = max(2, int(round(radius * ASTEROID_SPRITE_SCALE_TO_RADIUS)))
+        for variant in variants:
+            _get_scaled_variant(variant, target_longest)
 
 
 def build_asteroid_texture(shape_offsets_or_radius, seed=None):
